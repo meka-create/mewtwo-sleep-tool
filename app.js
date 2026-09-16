@@ -6,7 +6,7 @@ createApp({
             masterRanks: [],
             serverDailyData: [],
             userInputs: [],
-            modifiedFields: {}, // ユーザーが変更した項目を記録するオブジェクト { "minna-2": true }
+            snapshotTextInputs: [], // 保存済みの値を「文字」として厳重保管する箱
             editingCell: null,
             isLoaded: false
         }
@@ -94,6 +94,7 @@ createApp({
         },
         async loadData() {
             try {
+                // マスターデータもキャッシュ回避のためタイムスタンプを付与
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 const data = await response.json();
                 this.masterRanks = data.masterRanks;
@@ -111,15 +112,21 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // ロード直後は変更状態をリセットする
-                this.modifiedFields = {};
+                // 初回ロード時に基準となるスナップショットを記録
+                this.takeSnapshot();
                 this.isLoaded = true;
             } catch (error) {
                 console.error("データの読み込みに失敗しました:", error);
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
         },
-        // 入力が開始された（タップされた）際の処理
+        // 数値を完全に文字化して記録する（未入力やnullは全て空文字に統一）
+        takeSnapshot() {
+            this.snapshotTextInputs = this.userInputs.map(item => ({
+                minnaPower: (item.minnaPower === null || item.minnaPower === '') ? '' : String(item.minnaPower),
+                jibunPower: (item.jibunPower === null || item.jibunPower === '') ? '' : String(item.jibunPower)
+            }));
+        },
         startEdit(index, type) {
             this.editingCell = { index, type };
             this.$nextTick(() => {
@@ -130,32 +137,30 @@ createApp({
                 }
             });
         },
-        // 入力ボックスの値がユーザーによって書き換えられた時に発火
-        markModified(index, type) {
-            const key = `${type}-${index}`;
-            this.modifiedFields[key] = true;
-        },
-        // 変更状態の判定：フラグが立っているかだけを見る（ブラウザ間の差異を無視する）
-        isModified(index, type) {
-            const key = `${type}-${index}`;
-            return !!this.modifiedFields[key];
-        },
-        // フォーカスが外れたら入力モードを終了するが、変更フラグはそのまま残る（保存ボタンは消えない）
         handleBlur() {
             setTimeout(() => {
                 this.editingCell = null;
             }, 150);
         },
-        // 保存処理
         blurAndSave() {
             this.saveAll();
             this.editingCell = null;
         },
+        // 変更されたかどうかを「文字」として厳密に比較する
+        isModified(index, type) {
+            if (this.snapshotTextInputs.length === 0) return false;
+            
+            let currentVal = this.userInputs[index][type];
+            let currentText = (currentVal === null || currentVal === '') ? '' : String(currentVal);
+            let savedText = this.snapshotTextInputs[index][type];
+            
+            return currentText !== savedText;
+        },
         saveAll() {
-            // ローカルストレージに保存
+            // ストレージに保存
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
-            // 保存した後は変更フラグを全てリセットし、保存ボタンを消す
-            this.modifiedFields = {};
+            // 保存したら、現在の状態を新しい基準（スナップショット）として更新
+            this.takeSnapshot();
         },
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
