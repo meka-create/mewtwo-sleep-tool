@@ -108,7 +108,8 @@
                                     <span v-else class="text-slate-500 text-[9px] md:text-xs">未入力</span>
                                 </div>
                             </template>
-                            <button v-if="isModified(index, 'minna')" @mousedown.prevent="blurAndSave"
+                            <!-- 変更時のみ表示される保存ボタン -->
+                            <button type="button" v-if="isModified(index, 'minna')" @mousedown.prevent="blurAndSave"
                                     class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-yellow-600 hover:bg-yellow-500 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
                                 保存
                             </button>
@@ -136,7 +137,8 @@
                                     <span v-else class="text-slate-500 text-[9px] md:text-xs">未入力</span>
                                 </div>
                             </template>
-                            <button v-if="isModified(index, 'jibun')" @mousedown.prevent="blurAndSave"
+                            <!-- 変更時のみ表示される保存ボタン -->
+                            <button type="button" v-if="isModified(index, 'jibun')" @mousedown.prevent="blurAndSave"
                                     class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-yellow-600 hover:bg-yellow-500 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
                                 保存
                             </button>

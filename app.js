@@ -94,6 +94,7 @@ createApp({
         },
         async loadData() {
             try {
+                // キャッシュ回避のためクエリパラメータを付与
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 const data = await response.json();
                 this.masterRanks = data.masterRanks;
@@ -111,7 +112,7 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // 保存ボタンの誤作動を防ぐため、初期状態を厳密にコピーして文字列化する関数を用意
+                // 初回読み込み完了時に、現在の状態を厳密に保存（クローン）する
                 this.syncSavedData();
                 this.isLoaded = true;
             } catch (error) {
@@ -120,11 +121,8 @@ createApp({
             }
         },
         syncSavedData() {
-            // 現在の userInputs をクリーンな文字列状態として savedUserInputs に保持する
-            this.savedUserInputs = this.userInputs.map(item => ({
-                minnaPower: (item.minnaPower === null || item.minnaPower === '') ? '' : String(item.minnaPower),
-                jibunPower: (item.jibunPower === null || item.jibunPower === '') ? '' : String(item.jibunPower)
-            }));
+            // Vueのプロキシや参照を切り離し、純粋な値としてクローンを保存
+            this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
         },
         startEdit(index, type) {
             this.editingCell = { index, type };
@@ -132,7 +130,7 @@ createApp({
                 const el = document.getElementById(`input-${type}-${index}`);
                 if (el) {
                     el.focus();
-                    el.select();
+                    el.select(); // タップ時に即座に上書きできるよう全選択
                 }
             });
         },
@@ -145,22 +143,28 @@ createApp({
             this.saveAll();
             this.editingCell = null;
         },
+        // 「保存された値」と「現在の入力」を数値レベルで厳密に比較する
         isModified(index, type) {
-            if (!this.savedUserInputs || this.savedUserInputs.length === 0) return false;
+            if (!this.savedUserInputs || this.savedUserInputs.length <= index) return false;
             
-            // 現在の入力値を文字列に変換（nullや空文字は '' に統一）
-            let currentVal = this.userInputs[index][type];
-            let currentStr = (currentVal === null || currentVal === '') ? '' : String(currentVal);
+            let current = this.userInputs[index][type];
+            let saved = this.savedUserInputs[index][type];
             
-            // 保存されている値（すでに文字列）
-            let savedStr = this.savedUserInputs[index][type];
+            // 空欄（null, undefined, 空文字）の判定
+            let isCurrentEmpty = (current === null || current === undefined || current === '');
+            let isSavedEmpty = (saved === null || saved === undefined || saved === '');
             
-            return currentStr !== savedStr;
+            // 両方とも空欄なら変更なし
+            if (isCurrentEmpty && isSavedEmpty) return false;
+            // どちらか一方だけが空欄になった場合は変更あり
+            if (isCurrentEmpty !== isSavedEmpty) return true;
+            
+            // どちらも数値が存在する場合は、数値型にして比較（"263.0" と 263 などの誤判定を防止）
+            return Number(current) !== Number(saved);
         },
         saveAll() {
-            // ローカルストレージに保存
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
-            // 保存した状態を現在の基準状態として同期
+            // 保存完了後、新しい基準状態として同期する
             this.syncSavedData();
         },
         getRankColorClass(rank) {
