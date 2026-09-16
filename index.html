@@ -102,7 +102,7 @@
                             <template v-else>
                                 <div @click="startEdit(index, 'minna')" 
                                      class="w-full h-full bg-slate-900 border border-slate-600 rounded px-1.5 md:px-2 text-white text-xs md:text-sm cursor-text flex items-center transition-colors hover:bg-slate-800"
-                                     :class="{'border-yellow-500 bg-yellow-900/20': userInputs[index] && userInputs[index].minnaDirty}">
+                                     :class="{'border-purple-500 bg-purple-900/30': userInputs[index] && userInputs[index].minnaDirty}">
                                     <span v-if="userInputs[index].minnaPower !== null && userInputs[index].minnaPower !== '' && !isNaN(userInputs[index].minnaPower)">
                                         {{ Math.round(userInputs[index].minnaPower).toLocaleString() }}
                                     </span>
@@ -110,7 +110,7 @@
                                 </div>
                             </template>
                             <button v-show="userInputs[index] && userInputs[index].minnaDirty" @mousedown.prevent="saveOne(index, 'minna')"
-                                    class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-yellow-600 hover:bg-yellow-500 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
+                                    class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
                                 保存
                             </button>
                         </div>
@@ -131,7 +131,7 @@
                             <template v-else>
                                 <div @click="startEdit(index, 'jibun')" 
                                      class="w-full h-full bg-slate-900 border border-slate-600 rounded px-1.5 md:px-2 text-white text-xs md:text-sm cursor-text flex items-center transition-colors hover:bg-slate-800"
-                                     :class="{'border-yellow-500 bg-yellow-900/20': userInputs[index] && userInputs[index].jibunDirty}">
+                                     :class="{'border-purple-500 bg-purple-900/30': userInputs[index] && userInputs[index].jibunDirty}">
                                     <span v-if="userInputs[index].jibunPower !== null && userInputs[index].jibunPower !== '' && !isNaN(userInputs[index].jibunPower)">
                                         {{ Math.round(userInputs[index].jibunPower).toLocaleString() }}
                                     </span>
@@ -139,7 +139,7 @@
                                 </div>
                             </template>
                             <button v-show="userInputs[index] && userInputs[index].jibunDirty" @mousedown.prevent="saveOne(index, 'jibun')"
-                                    class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-yellow-600 hover:bg-yellow-500 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
+                                    class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
                                 保存
                             </button>
                         </div>
@@ -188,7 +188,7 @@
             </div>
         </details>
     </div>
-    <!-- キャッシュ対策：v=3 -->
-    <script src="app.js?v=3"></script>
+    <!-- キャッシュ対策：v=4 -->
+    <script src="app.js?v=4"></script>
 </body>
 </html>
