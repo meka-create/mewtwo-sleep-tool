@@ -6,7 +6,7 @@ createApp({
             masterRanks: [],
             serverDailyData: [],
             userInputs: [],
-            savedUserInputs: [],
+            modifiedFields: {}, // ユーザーが変更した項目を記録するオブジェクト { "minna-2": true }
             editingCell: null,
             isLoaded: false
         }
@@ -111,17 +111,15 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                this.syncSavedData();
+                // ロード直後は変更状態をリセットする
+                this.modifiedFields = {};
                 this.isLoaded = true;
             } catch (error) {
                 console.error("データの読み込みに失敗しました:", error);
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
         },
-        syncSavedData() {
-            // 保存ボタン判定用に、現在の入力を別メモリとして厳密にコピー
-            this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
-        },
+        // 入力が開始された（タップされた）際の処理
         startEdit(index, type) {
             this.editingCell = { index, type };
             this.$nextTick(() => {
@@ -132,35 +130,32 @@ createApp({
                 }
             });
         },
+        // 入力ボックスの値がユーザーによって書き換えられた時に発火
+        markModified(index, type) {
+            const key = `${type}-${index}`;
+            this.modifiedFields[key] = true;
+        },
+        // 変更状態の判定：フラグが立っているかだけを見る（ブラウザ間の差異を無視する）
+        isModified(index, type) {
+            const key = `${type}-${index}`;
+            return !!this.modifiedFields[key];
+        },
+        // フォーカスが外れたら入力モードを終了するが、変更フラグはそのまま残る（保存ボタンは消えない）
         handleBlur() {
             setTimeout(() => {
                 this.editingCell = null;
             }, 150);
         },
+        // 保存処理
         blurAndSave() {
             this.saveAll();
             this.editingCell = null;
         },
-        isModified(index, type) {
-            if (!this.savedUserInputs || this.savedUserInputs.length === 0) return false;
-            
-            let currentVal = this.userInputs[index][type];
-            let savedVal = this.savedUserInputs[index][type];
-            
-            // どちらも未入力（null または 空文字）の場合は変更なし
-            if ((currentVal === null || currentVal === '') && (savedVal === null || savedVal === '')) {
-                return false;
-            }
-            
-            // 数値に変換して比較（これにより 100 と 100.0 が同一視される）
-            let cNum = (currentVal === null || currentVal === '') ? null : Number(currentVal);
-            let sNum = (savedVal === null || savedVal === '') ? null : Number(savedVal);
-            
-            return cNum !== sNum;
-        },
         saveAll() {
+            // ローカルストレージに保存
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
-            this.syncSavedData();
+            // 保存した後は変更フラグを全てリセットし、保存ボタンを消す
+            this.modifiedFields = {};
         },
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
