@@ -6,8 +6,8 @@ createApp({
             masterRanks: [],
             serverDailyData: [],
             userInputs: [],
-            savedUserInputs: [], // 保存前の状態を比較するために保持
-            editingCell: null,   // 現在編集中のセル { index, type }
+            savedUserInputs: [],
+            editingCell: null,
             isLoaded: false
         }
     },
@@ -72,8 +72,9 @@ createApp({
         nextRank() {
             const currentRankNum = this.currentRank.rank;
             return this.masterRanks.find(r => r.rank === currentRankNum + 1) || null;
-        },
-        progressPercentage() {
+        }
+        // progressPercentage is strictly checked for negative values
+        , progressPercentage() {
             if (!this.nextRank) return 100;
             const currentRankDef = this.masterRanks.find(r => r.rank === this.currentRank.rank);
             const basePower = currentRankDef ? currentRankDef.requiredPower : 0;
@@ -111,7 +112,7 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // 初期状態を保存用の変数にコピーしておく
+                // 深いコピーで初期状態を保持
                 this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
                 this.isLoaded = true;
             } catch (error) {
@@ -119,31 +120,34 @@ createApp({
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
         },
-        // 入力ボックスの表示・フォーカス切り替え
         startEdit(index, type) {
             this.editingCell = { index, type };
             this.$nextTick(() => {
                 const el = document.getElementById(`input-${type}-${index}`);
-                if (el) el.focus();
+                if (el) {
+                    el.focus();
+                    el.select(); // タップ時にすぐ上書き入力できるよう全選択
+                }
             });
         },
-        handleBlur() {
-            // 保存ボタンのクリックイベントが発火する猶予を持たせるため少し遅延させる
-            setTimeout(() => {
-                this.editingCell = null;
-            }, 150);
+        handleBlur(index, type) {
+            // フォーカスが外れた際、値が変更されていなければ編集モードを終了する。
+            // 変更されている場合は、保存ボタンを押させるためにあえて編集モードを維持する（またはdivに戻ってもボタンを残す）
+            this.editingCell = null;
         },
-        blurAndSave(type, index) {
+        blurAndSave() {
             this.saveAll();
-            const el = document.getElementById(`input-${type}-${index}`);
-            if (el) el.blur();
+            this.editingCell = null;
         },
-        // 初期状態から変更されたかを判定（ボタンの表示条件）
+        // 数値と文字列の違いやnullを厳密に比較し、変更があればtrueを返す
         isModified(index, type) {
-            if (this.savedUserInputs.length === 0) return false;
-            return this.userInputs[index][type] !== this.savedUserInputs[index][type];
+            if (!this.savedUserInputs || this.savedUserInputs.length === 0) return false;
+            let current = this.userInputs[index][type];
+            let saved = this.savedUserInputs[index][type];
+            let cNum = (current === null || current === '') ? null : Number(current);
+            let sNum = (saved === null || saved === '') ? null : Number(saved);
+            return cNum !== sNum;
         },
-        // ローカルストレージに変更を保存し、ボタンを非表示にする
         saveAll() {
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
             this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
