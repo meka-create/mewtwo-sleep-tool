@@ -6,7 +6,6 @@ createApp({
             masterRanks: [],
             serverDailyData: [],
             userInputs: [],
-            snapshotTextInputs: [], // 保存済みの値を「文字」として厳重保管する箱
             editingCell: null,
             isLoaded: false
         }
@@ -89,12 +88,13 @@ createApp({
         initializeUserInputs() {
             this.userInputs = this.serverDailyData.map(day => ({
                 minnaPower: day.isFixed ? null : day.fixedMinnaPower,
-                jibunPower: null
+                jibunPower: null,
+                minnaDirty: false,
+                jibunDirty: false
             }));
         },
         async loadData() {
             try {
-                // マスターデータもキャッシュ回避のためタイムスタンプを付与
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 const data = await response.json();
                 this.masterRanks = data.masterRanks;
@@ -104,7 +104,13 @@ createApp({
                 if (saved) {
                     const parsedSaved = JSON.parse(saved);
                     if(parsedSaved.length === this.serverDailyData.length){
-                         this.userInputs = parsedSaved;
+                         // ロード時はダーティフラグを明示的に false にして復元
+                         this.userInputs = parsedSaved.map(item => ({
+                             minnaPower: item.minnaPower,
+                             jibunPower: item.jibunPower,
+                             minnaDirty: false,
+                             jibunDirty: false
+                         }));
                     } else {
                          this.initializeUserInputs();
                     }
@@ -112,20 +118,11 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // 初回ロード時に基準となるスナップショットを記録
-                this.takeSnapshot();
                 this.isLoaded = true;
             } catch (error) {
                 console.error("データの読み込みに失敗しました:", error);
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
-        },
-        // 数値を完全に文字化して記録する（未入力やnullは全て空文字に統一）
-        takeSnapshot() {
-            this.snapshotTextInputs = this.userInputs.map(item => ({
-                minnaPower: (item.minnaPower === null || item.minnaPower === '') ? '' : String(item.minnaPower),
-                jibunPower: (item.jibunPower === null || item.jibunPower === '') ? '' : String(item.jibunPower)
-            }));
         },
         startEdit(index, type) {
             this.editingCell = { index, type };
@@ -142,25 +139,19 @@ createApp({
                 this.editingCell = null;
             }, 150);
         },
-        blurAndSave() {
-            this.saveAll();
+        blurAndSave(index, type) {
+            this.saveOne(index, type);
             this.editingCell = null;
         },
-        // 変更されたかどうかを「文字」として厳密に比較する
-        isModified(index, type) {
-            if (this.snapshotTextInputs.length === 0) return false;
-            
-            let currentVal = this.userInputs[index][type];
-            let currentText = (currentVal === null || currentVal === '') ? '' : String(currentVal);
-            let savedText = this.snapshotTextInputs[index][type];
-            
-            return currentText !== savedText;
-        },
-        saveAll() {
-            // ストレージに保存
+        // 個別の項目を保存し、その項目の変更フラグだけを折る
+        saveOne(index, type) {
+            if (type === 'minna') {
+                this.userInputs[index].minnaDirty = false;
+            } else {
+                this.userInputs[index].jibunDirty = false;
+            }
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
-            // 保存したら、現在の状態を新しい基準（スナップショット）として更新
-            this.takeSnapshot();
+            this.editingCell = null;
         },
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
