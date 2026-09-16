@@ -72,9 +72,8 @@ createApp({
         nextRank() {
             const currentRankNum = this.currentRank.rank;
             return this.masterRanks.find(r => r.rank === currentRankNum + 1) || null;
-        }
-        // progressPercentage is strictly checked for negative values
-        , progressPercentage() {
+        },
+        progressPercentage() {
             if (!this.nextRank) return 100;
             const currentRankDef = this.masterRanks.find(r => r.rank === this.currentRank.rank);
             const basePower = currentRankDef ? currentRankDef.requiredPower : 0;
@@ -112,7 +111,7 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // 深いコピーで初期状態を保持
+                // 深いコピーで保存用変数に状態をセット
                 this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
                 this.isLoaded = true;
             } catch (error) {
@@ -126,26 +125,32 @@ createApp({
                 const el = document.getElementById(`input-${type}-${index}`);
                 if (el) {
                     el.focus();
-                    el.select(); // タップ時にすぐ上書き入力できるよう全選択
+                    el.select();
                 }
             });
         },
-        handleBlur(index, type) {
-            // フォーカスが外れた際、値が変更されていなければ編集モードを終了する。
-            // 変更されている場合は、保存ボタンを押させるためにあえて編集モードを維持する（またはdivに戻ってもボタンを残す）
-            this.editingCell = null;
+        handleBlur() {
+            // 保存ボタンのクリックイベント発火のための猶予
+            setTimeout(() => {
+                this.editingCell = null;
+            }, 150);
         },
         blurAndSave() {
             this.saveAll();
             this.editingCell = null;
         },
-        // 数値と文字列の違いやnullを厳密に比較し、変更があればtrueを返す
+        // 値が初期状態から変更されたかを厳密に判定
         isModified(index, type) {
             if (!this.savedUserInputs || this.savedUserInputs.length === 0) return false;
             let current = this.userInputs[index][type];
             let saved = this.savedUserInputs[index][type];
+            
+            // どちらも空（null, undefined, 空文字）の場合は変更なしとみなす
+            if ((current === null || current === '') && (saved === null || saved === '')) return false;
+            
             let cNum = (current === null || current === '') ? null : Number(current);
             let sNum = (saved === null || saved === '') ? null : Number(saved);
+            
             return cNum !== sNum;
         },
         saveAll() {
