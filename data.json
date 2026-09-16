@@ -1,0 +1,28 @@
+{
+  "masterRanks": [
+    { "rank": 1, "requiredPower": 1 },
+    { "rank": 2, "requiredPower": 80 },
+    { "rank": 3, "requiredPower": 200 },
+    { "rank": 4, "requiredPower": 450 },
+    { "rank": 5, "requiredPower": 850 },
+    { "rank": 6, "requiredPower": 1400 },
+    { "rank": 7, "requiredPower": 2000 },
+    { "rank": 8, "requiredPower": 2700 },
+    { "rank": 9, "requiredPower": 3400 },
+    { "rank": 10, "requiredPower": 4200 },
+    { "rank": 11, "requiredPower": 5000 },
+    { "rank": 12, "requiredPower": 5900 },
+    { "rank": 13, "requiredPower": 7000 },
+    { "rank": 14, "requiredPower": 9000 },
+    { "rank": 15, "requiredPower": 11500 }
+  ],
+  "dailyData": [
+    { "day": "月", "fixedMinnaPower": 94.426, "isFixed": true },
+    { "day": "火", "fixedMinnaPower": 203.144, "isFixed": true },
+    { "day": "水", "fixedMinnaPower": 222, "isFixed": true },
+    { "day": "木", "fixedMinnaPower": 263, "isFixed": false },
+    { "day": "金", "fixedMinnaPower": 329, "isFixed": false },
+    { "day": "土", "fixedMinnaPower": 421, "isFixed": false },
+    { "day": "日", "fixedMinnaPower": 542, "isFixed": false }
+  ]
+}

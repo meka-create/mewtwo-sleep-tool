@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ミュウツーイベント ねむけパワー試算表</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Helvetica Neue', Arial, sans-serif; }
+        .bg-rank-low { background-color: rgba(59, 130, 246, 0.15); border-left: 4px solid #3b82f6; } /* 1-5: Blue */
+        .bg-rank-mid { background-color: rgba(168, 85, 247, 0.15); border-left: 4px solid #a855f7; } /* 6-10: Purple */
+        .bg-rank-high { background-color: rgba(236, 72, 153, 0.15); border-left: 4px solid #ec4899; } /* 11-15: Pink */
+        .text-rank-low { color: #60a5fa; }
+        .text-rank-mid { color: #c084fc; }
+        .text-rank-high { color: #f472b6; }
+        
+        [v-cloak] { display: none; }
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8">
+    <div id="app" v-cloak class="max-w-3xl mx-auto">
+        <header class="mb-8 text-center">
+            <h1 class="text-2xl md:text-3xl font-bold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">
+                ミュウツーイベント ねむけパワー試算
+            </h1>
+            <p class="text-slate-400 text-sm">※数値の単位は「万(M)」です</p>
+        </header>
+
+        <!-- サマリー（累計表示） -->
+        <div class="bg-slate-800 rounded-xl p-6 mb-8 shadow-lg shadow-purple-900/20 border border-slate-700">
+            <div class="grid grid-cols-2 gap-4 text-center">
+                <div>
+                    <p class="text-slate-400 text-sm mb-1">現在の到達ランク</p>
+                    <div class="text-4xl font-bold" :class="getRankColorClass(currentRank.rank)">
+                        {{ currentRank.rank }}
+                    </div>
+                </div>
+                <div>
+                    <p class="text-slate-400 text-sm mb-1">累計イベントねむけパワー</p>
+                    <div class="text-3xl font-bold text-white mt-2">
+                        {{ totalEventPower.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) }} M
+                    </div>
+                </div>
+            </div>
+            
+            <!-- プログレスバー -->
+            <div class="mt-6" v-if="nextRank">
+                <div class="flex justify-between text-xs text-slate-400 mb-1">
+                    <span>ランク {{ currentRank.rank }}</span>
+                    <span>ランク {{ nextRank.rank }} まであと {{ (nextRank.requiredPower - totalEventPower).toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) }} M</span>
+                </div>
+                <div class="w-full bg-slate-700 rounded-full h-3">
+                    <div class="h-3 rounded-full transition-all duration-500" 
+                         :class="getRankBgClass(nextRank.rank).replace('bg-opacity-15', '').replace('border-left', '')"
+                         :style="{ width: progressPercentage + '%', backgroundColor: getProgressBarColor(nextRank.rank) }"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日別入力エリア -->
+        <div class="space-y-4 mb-10">
+            <h2 class="text-xl font-bold border-b border-slate-700 pb-2">日別の試算入力</h2>
+            
+            <div v-for="(day, index) in calculatedDailyData" :key="index" 
+                 class="bg-slate-800 rounded-lg p-4 border border-slate-700 flex flex-col md:flex-row gap-4 items-center transition-colors hover:bg-slate-750">
+                
+                <div class="flex-shrink-0 w-16 text-center">
+                    <div class="text-lg font-bold">{{ day.day }}</div>
+                    <div class="text-xs font-semibold px-2 py-1 rounded mt-1" :class="getRankBgClass(day.reachedRank)">
+                        Rank {{ day.reachedRank }}
+                    </div>
+                </div>
+
+                <div class="flex-grow grid grid-cols-2 gap-4 w-full">
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">みんなのパワー(D列)</label>
+                        <div v-if="day.isFixed" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-300 text-sm flex justify-between items-center">
+                            <span>{{ day.minnaPower }}</span>
+                            <span class="text-[10px] bg-slate-700 px-1 py-0.5 rounded">確定</span>
+                        </div>
+                        <input v-else type="number" step="0.1" v-model.number="userInputs[index].minnaPower" @input="saveToLocal"
+                               class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-slate-400 mb-1">じぶんのパワー(E列)</label>
+                        <input type="number" step="0.1" v-model.number="userInputs[index].jibunPower" @input="saveToLocal"
+                               class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                    </div>
+                </div>
+
+                <div class="flex-shrink-0 w-full md:w-32 text-right md:text-left mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700">
+                    <div class="text-xs text-slate-400">イベントパワー</div>
+                    <div class="text-lg font-bold text-purple-300">{{ day.eventPower.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1}) }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- マスターデータ表（アコーディオン） -->
+        <details class="group bg-slate-800 rounded-lg border border-slate-700">
+            <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-4">
+                <span>ランクアップ必要パワー表 (G, H, I列)</span>
+                <span class="transition group-open:rotate-180">
+                    <svg fill="none" height="24" shape-rendering="geometricPrecision" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" viewBox="0 0 24 24" width="24"><path d="M6 9l6 6 6-6"></path></svg>
+                </span>
+            </summary>
+            <div class="text-slate-400 group-open:animate-fadeIn mt-3 px-4 pb-4">
+                <table class="w-full text-sm text-center">
+                    <thead>
+                        <tr class="text-slate-300 border-b border-slate-600">
+                            <th class="py-2">ランク</th>
+                            <th class="py-2">必要パワー</th>
+                            <th class="py-2">上昇量</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(rank, index) in masterRanks" :key="rank.rank" 
+                            class="border-b border-slate-700/50" :class="getRankBgClass(rank.rank)">
+                            <td class="py-1.5 font-bold">{{ rank.rank }}</td>
+                            <td class="py-1.5">{{ rank.requiredPower }}</td>
+                            <td class="py-1.5">{{ index === 0 ? '-' : rank.requiredPower - masterRanks[index-1].requiredPower }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
