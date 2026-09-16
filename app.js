@@ -22,8 +22,8 @@ createApp({
                 const serverDay = this.serverDailyData[i];
                 const userIn = this.userInputs[i] || { minnaPower: null, jibunPower: null };
                 
-                let mPower = userIn.minnaPower !== null && userIn.minnaPower !== '' ? Number(userIn.minnaPower) : 0;
-                let jPower = userIn.jibunPower !== null && userIn.jibunPower !== '' ? Number(userIn.jibunPower) : 0;
+                let mPower = (userIn.minnaPower !== null && userIn.minnaPower !== '' && !isNaN(userIn.minnaPower)) ? Number(userIn.minnaPower) : 0;
+                let jPower = (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)) ? Number(userIn.jibunPower) : 0;
 
                 let minna = serverDay.isFixed ? serverDay.fixedMinnaPower : mPower;
                 let jibun = jPower;
@@ -45,7 +45,7 @@ createApp({
                     isFixed: serverDay.isFixed,
                     minnaPower: minna,
                     jibunPower: jibun,
-                    hasJibunInput: userIn.jibunPower !== null && userIn.jibunPower !== '', 
+                    hasJibunInput: (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)), 
                     eventPower: cumulativePower,
                     reachedRank: reachedRank
                 });
@@ -111,13 +111,20 @@ createApp({
                     this.initializeUserInputs();
                 }
                 
-                // 深いコピーで保存用変数に状態をセット
-                this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
+                // 保存ボタンの誤作動を防ぐため、初期状態を厳密にコピーして文字列化する関数を用意
+                this.syncSavedData();
                 this.isLoaded = true;
             } catch (error) {
                 console.error("データの読み込みに失敗しました:", error);
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
+        },
+        syncSavedData() {
+            // 現在の userInputs をクリーンな文字列状態として savedUserInputs に保持する
+            this.savedUserInputs = this.userInputs.map(item => ({
+                minnaPower: (item.minnaPower === null || item.minnaPower === '') ? '' : String(item.minnaPower),
+                jibunPower: (item.jibunPower === null || item.jibunPower === '') ? '' : String(item.jibunPower)
+            }));
         },
         startEdit(index, type) {
             this.editingCell = { index, type };
@@ -130,7 +137,6 @@ createApp({
             });
         },
         handleBlur() {
-            // 保存ボタンのクリックイベント発火のための猶予
             setTimeout(() => {
                 this.editingCell = null;
             }, 150);
@@ -139,23 +145,23 @@ createApp({
             this.saveAll();
             this.editingCell = null;
         },
-        // 値が初期状態から変更されたかを厳密に判定
         isModified(index, type) {
             if (!this.savedUserInputs || this.savedUserInputs.length === 0) return false;
-            let current = this.userInputs[index][type];
-            let saved = this.savedUserInputs[index][type];
             
-            // どちらも空（null, undefined, 空文字）の場合は変更なしとみなす
-            if ((current === null || current === '') && (saved === null || saved === '')) return false;
+            // 現在の入力値を文字列に変換（nullや空文字は '' に統一）
+            let currentVal = this.userInputs[index][type];
+            let currentStr = (currentVal === null || currentVal === '') ? '' : String(currentVal);
             
-            let cNum = (current === null || current === '') ? null : Number(current);
-            let sNum = (saved === null || saved === '') ? null : Number(saved);
+            // 保存されている値（すでに文字列）
+            let savedStr = this.savedUserInputs[index][type];
             
-            return cNum !== sNum;
+            return currentStr !== savedStr;
         },
         saveAll() {
+            // ローカルストレージに保存
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
-            this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
+            // 保存した状態を現在の基準状態として同期
+            this.syncSavedData();
         },
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
