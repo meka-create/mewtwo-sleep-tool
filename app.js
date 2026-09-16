@@ -5,20 +5,11 @@ createApp({
         return {
             masterRanks: [],
             serverDailyData: [],
-            userInputs: [
-                { minnaPower: 0, jibunPower: 161.7 }, // 月
-                { minnaPower: 0, jibunPower: 267.6 }, // 火
-                { minnaPower: 0, jibunPower: 400 },   // 水
-                { minnaPower: 0, jibunPower: 400 },   // 木
-                { minnaPower: 0, jibunPower: 400 },   // 金
-                { minnaPower: 0, jibunPower: 400 },   // 土
-                { minnaPower: 0, jibunPower: 400 }    // 日
-            ],
+            userInputs: [],
             isLoaded: false
         }
     },
     computed: {
-        // 全計算を順番に行う（C列、B列の算出）
         calculatedDailyData() {
             if (!this.isLoaded) return [];
 
@@ -27,18 +18,17 @@ createApp({
 
             for (let i = 0; i < this.serverDailyData.length; i++) {
                 const serverDay = this.serverDailyData[i];
-                const userIn = this.userInputs[i];
+                const userIn = this.userInputs[i] || { minnaPower: null, jibunPower: null };
                 
-                // D列: 制作者がisFixedをtrueにしていれば強制的にそれを使用。そうでなければユーザー入力を優先
-                let minna = serverDay.isFixed ? serverDay.fixedMinnaPower : userIn.minnaPower;
-                // E列: 常にユーザー入力を優先
-                let jibun = userIn.jibunPower || 0;
+                let mPower = userIn.minnaPower !== null && userIn.minnaPower !== '' ? Number(userIn.minnaPower) : 0;
+                let jPower = userIn.jibunPower !== null && userIn.jibunPower !== '' ? Number(userIn.jibunPower) : 0;
+
+                let minna = serverDay.isFixed ? serverDay.fixedMinnaPower : mPower;
+                let jibun = jPower;
                 
-                // C列: イベントねむけパワー = みんな + じぶん
                 let dayEventPower = minna + jibun;
                 cumulativePower += dayEventPower;
 
-                // B列: 累計パワーから現在の到達ランクを計算
                 let reachedRank = 1;
                 for (let r = this.masterRanks.length - 1; r >= 0; r--) {
                     if (cumulativePower >= this.masterRanks[r].requiredPower) {
@@ -48,23 +38,37 @@ createApp({
                 }
 
                 results.push({
+                    date: serverDay.date,
                     day: serverDay.day,
                     isFixed: serverDay.isFixed,
                     minnaPower: minna,
                     jibunPower: jibun,
-                    eventPower: cumulativePower, // 累計値を表示（単日表示にする場合は dayEventPower に変更）
+                    hasJibunInput: userIn.jibunPower !== null && userIn.jibunPower !== '', // 入力があるか判定
+                    eventPower: cumulativePower,
                     reachedRank: reachedRank
                 });
             }
             return results;
         },
+        // ページ上部集計用：じぶんのパワーが入力されている最も遅い日（最新の進捗）を特定する
+        latestValidData() {
+            if (this.calculatedDailyData.length === 0) return null;
+            
+            for (let i = this.calculatedDailyData.length - 1; i >= 0; i--) {
+                if (this.calculatedDailyData[i].hasJibunInput) {
+                    return this.calculatedDailyData[i];
+                }
+            }
+            // ひとつも入力がない場合は初日の状態を0として返す
+            return { eventPower: 0, reachedRank: 1 };
+        },
         totalEventPower() {
-            if (this.calculatedDailyData.length === 0) return 0;
-            return this.calculatedDailyData[this.calculatedDailyData.length - 1].eventPower;
+            const data = this.latestValidData;
+            return data ? data.eventPower : 0;
         },
         currentRank() {
-            if (this.calculatedDailyData.length === 0) return { rank: 1 };
-            return { rank: this.calculatedDailyData[this.calculatedDailyData.length - 1].reachedRank };
+            const data = this.latestValidData;
+            return { rank: data ? data.reachedRank : 1 };
         },
         nextRank() {
             const currentRankNum = this.currentRank.rank;
@@ -83,29 +87,31 @@ createApp({
         }
     },
     methods: {
+        initializeUserInputs() {
+            this.userInputs = this.serverDailyData.map(day => ({
+                // 未確定の日は json の仮数値をデフォルトセットし、じぶんのパワーは未入力(null)にする
+                minnaPower: day.isFixed ? null : day.fixedMinnaPower,
+                jibunPower: null
+            }));
+        },
         async loadData() {
             try {
-                // 制作者が更新する data.json を読み込む（キャッシュを防ぐためにクエリパラメータ付与）
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 const data = await response.json();
                 this.masterRanks = data.masterRanks;
                 this.serverDailyData = data.dailyData;
 
-                // ユーザーの過去の入力をローカルストレージから復元
                 const saved = localStorage.getItem('mewtwo_sleep_calc_data');
                 if (saved) {
                     const parsedSaved = JSON.parse(saved);
-                    // サーバーからの配列長と合う場合のみ復元
-                    if(parsedSaved.length === this.userInputs.length){
+                    // 過去データ（7日分）が残っている場合は、14日分に再初期化する
+                    if(parsedSaved.length === this.serverDailyData.length){
                          this.userInputs = parsedSaved;
+                    } else {
+                         this.initializeUserInputs();
                     }
                 } else {
-                    // 初期値設定（D列の初期値をJSONからコピー）
-                    for(let i=0; i<this.serverDailyData.length; i++){
-                        if(!this.serverDailyData[i].isFixed){
-                            this.userInputs[i].minnaPower = this.serverDailyData[i].fixedMinnaPower || 0;
-                        }
-                    }
+                    this.initializeUserInputs();
                 }
                 this.isLoaded = true;
             } catch (error) {
@@ -114,10 +120,8 @@ createApp({
             }
         },
         saveToLocal() {
-            // 利用者が値を入力した際、ローカルストレージに自動保存
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
         },
-        // ランクに応じた色分けクラスを返すロジック
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
             if (rank <= 10) return 'text-rank-mid';
