@@ -14,6 +14,10 @@
         .text-rank-low { color: #60a5fa; }
         .text-rank-mid { color: #c084fc; }
         .text-rank-high { color: #f472b6; }
+        /* 数値入力のスピンボタン(上下矢印)を非表示にする */
+        input[type="number"]::-webkit-outer-spin-button,
+        input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type="number"] { -moz-appearance: textfield; }
         [v-cloak] { display: none; }
     </style>
 </head>
@@ -38,7 +42,7 @@
                 <div>
                     <p class="text-slate-400 text-sm mb-1">累計イベントねむけパワー</p>
                     <div class="text-3xl font-bold text-white mt-2">
-                        {{ Math.floor(totalEventPower).toLocaleString() }} M
+                        {{ Math.round(totalEventPower).toLocaleString() }} M
                     </div>
                 </div>
             </div>
@@ -48,7 +52,7 @@
                 <div class="flex justify-between text-xs text-slate-400 mb-1">
                     <span>ランク {{ currentRank.rank }}</span>
                     <span>
-                        ランク {{ nextRank.rank }} まであと {{ Math.floor(nextRank.requiredPower - totalEventPower).toLocaleString() }} M
+                        ランク {{ nextRank.rank }} まであと {{ Math.round(nextRank.requiredPower - totalEventPower).toLocaleString() }} M
                         <span v-if="!nextRank.isFixed" class="text-yellow-500/80 ml-1">(仮)</span>
                     </span>
                 </div>
@@ -64,7 +68,7 @@
         <div class="space-y-4 mb-10">
             <h2 class="text-xl font-bold border-b border-slate-700 pb-2 flex justify-between items-end">
                 日別の試算入力
-                <span class="text-xs text-slate-400 font-normal">※表示は整数（内部では小数を保持）</span>
+                <span class="text-xs text-slate-400 font-normal">※表示は四捨五入（タップで小数を編集）</span>
             </h2>
             
             <div v-for="(day, index) in calculatedDailyData" :key="index" 
@@ -80,32 +84,77 @@
                 </div>
 
                 <div class="flex-grow grid grid-cols-2 gap-4 w-full">
+                    <!-- みんなのパワー -->
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">みんなのパワー</label>
-                        <div v-if="day.isFixed" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-300 text-sm flex justify-between items-center">
-                            <span>{{ Math.floor(day.minnaPower).toLocaleString() }}</span>
+                        <div v-if="day.isFixed" class="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-slate-300 text-sm flex justify-between items-center min-h-[42px]">
+                            <span>{{ Math.round(day.minnaPower).toLocaleString() }}</span>
                             <span class="text-[10px] bg-slate-700 px-1 py-0.5 rounded">確定</span>
                         </div>
-                        <input v-else type="number" step="0.1" v-model.number="userInputs[index].minnaPower" @input="saveToLocal"
-                               placeholder="未入力"
-                               class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                        <div v-else class="relative flex items-center">
+                            <!-- 編集モード（小数表示） -->
+                            <template v-if="editingCell && editingCell.index === index && editingCell.type === 'minna'">
+                                <input :id="'input-minna-' + index" type="number" step="0.1" v-model.number="userInputs[index].minnaPower" 
+                                       @blur="handleBlur" @keyup.enter="blurAndSave('minna', index)"
+                                       placeholder="未入力"
+                                       class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                            </template>
+                            <!-- 表示モード（整数表示） -->
+                            <template v-else>
+                                <div @click="startEdit(index, 'minna')" 
+                                     class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white cursor-text min-h-[42px] flex items-center transition-colors hover:bg-slate-800">
+                                    <span v-if="userInputs[index].minnaPower !== null && userInputs[index].minnaPower !== ''">
+                                        {{ Math.round(userInputs[index].minnaPower).toLocaleString() }}
+                                    </span>
+                                    <span v-else class="text-slate-500">未入力</span>
+                                </div>
+                            </template>
+                            <!-- インライン保存ボタン -->
+                            <button v-if="isModified(index, 'minna')" @click.stop="saveAll"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-xs px-2.5 py-1 rounded shadow-md z-10 transition-all font-bold">
+                                保存
+                            </button>
+                        </div>
                     </div>
+                    
+                    <!-- じぶんのパワー -->
                     <div>
                         <label class="block text-xs text-slate-400 mb-1">じぶんのパワー</label>
-                        <input type="number" step="0.1" v-model.number="userInputs[index].jibunPower" @input="saveToLocal"
-                               placeholder="未入力"
-                               class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                        <div class="relative flex items-center">
+                            <!-- 編集モード（小数表示） -->
+                            <template v-if="editingCell && editingCell.index === index && editingCell.type === 'jibun'">
+                                <input :id="'input-jibun-' + index" type="number" step="0.1" v-model.number="userInputs[index].jibunPower" 
+                                       @blur="handleBlur" @keyup.enter="blurAndSave('jibun', index)"
+                                       placeholder="未入力"
+                                       class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500">
+                            </template>
+                            <!-- 表示モード（整数表示） -->
+                            <template v-else>
+                                <div @click="startEdit(index, 'jibun')" 
+                                     class="w-full bg-slate-900 border border-slate-600 rounded px-3 py-2 text-white cursor-text min-h-[42px] flex items-center transition-colors hover:bg-slate-800">
+                                    <span v-if="userInputs[index].jibunPower !== null && userInputs[index].jibunPower !== ''">
+                                        {{ Math.round(userInputs[index].jibunPower).toLocaleString() }}
+                                    </span>
+                                    <span v-else class="text-slate-500">未入力</span>
+                                </div>
+                            </template>
+                            <!-- インライン保存ボタン -->
+                            <button v-if="isModified(index, 'jibun')" @click.stop="saveAll"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-xs px-2.5 py-1 rounded shadow-md z-10 transition-all font-bold">
+                                保存
+                            </button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="flex-shrink-0 w-full md:w-32 text-right md:text-left mt-2 md:mt-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-700">
                     <div class="text-xs text-slate-400">イベントパワー</div>
-                    <div class="text-lg font-bold text-purple-300">{{ Math.floor(day.eventPower).toLocaleString() }}</div>
+                    <div class="text-lg font-bold text-purple-300">{{ Math.round(day.eventPower).toLocaleString() }}</div>
                 </div>
             </div>
         </div>
 
-        <!-- マスターデータ表（アコーディオン） -->
+        <!-- マスターデータ表 -->
         <details class="group bg-slate-800 rounded-lg border border-slate-700">
             <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-4">
                 <span>ランクアップ必要パワー表</span>

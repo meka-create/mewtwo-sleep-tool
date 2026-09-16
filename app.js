@@ -6,6 +6,8 @@ createApp({
             masterRanks: [],
             serverDailyData: [],
             userInputs: [],
+            savedUserInputs: [], // 保存前の状態を比較するために保持
+            editingCell: null,   // 現在編集中のセル { index, type }
             isLoaded: false
         }
     },
@@ -43,23 +45,20 @@ createApp({
                     isFixed: serverDay.isFixed,
                     minnaPower: minna,
                     jibunPower: jibun,
-                    hasJibunInput: userIn.jibunPower !== null && userIn.jibunPower !== '', // 入力があるか判定
+                    hasJibunInput: userIn.jibunPower !== null && userIn.jibunPower !== '', 
                     eventPower: cumulativePower,
                     reachedRank: reachedRank
                 });
             }
             return results;
         },
-        // ページ上部集計用：じぶんのパワーが入力されている最も遅い日（最新の進捗）を特定する
         latestValidData() {
             if (this.calculatedDailyData.length === 0) return null;
-            
             for (let i = this.calculatedDailyData.length - 1; i >= 0; i--) {
                 if (this.calculatedDailyData[i].hasJibunInput) {
                     return this.calculatedDailyData[i];
                 }
             }
-            // ひとつも入力がない場合は初日の状態を0として返す
             return { eventPower: 0, reachedRank: 1 };
         },
         totalEventPower() {
@@ -89,7 +88,6 @@ createApp({
     methods: {
         initializeUserInputs() {
             this.userInputs = this.serverDailyData.map(day => ({
-                // 未確定の日は json の仮数値をデフォルトセットし、じぶんのパワーは未入力(null)にする
                 minnaPower: day.isFixed ? null : day.fixedMinnaPower,
                 jibunPower: null
             }));
@@ -104,7 +102,6 @@ createApp({
                 const saved = localStorage.getItem('mewtwo_sleep_calc_data');
                 if (saved) {
                     const parsedSaved = JSON.parse(saved);
-                    // 過去データ（7日分）が残っている場合は、14日分に再初期化する
                     if(parsedSaved.length === this.serverDailyData.length){
                          this.userInputs = parsedSaved;
                     } else {
@@ -113,14 +110,43 @@ createApp({
                 } else {
                     this.initializeUserInputs();
                 }
+                
+                // 初期状態を保存用の変数にコピーしておく
+                this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
                 this.isLoaded = true;
             } catch (error) {
                 console.error("データの読み込みに失敗しました:", error);
                 alert("データの読み込みに失敗しました。時間をおいて再読み込みしてください。");
             }
         },
-        saveToLocal() {
+        // 入力ボックスの表示・フォーカス切り替え
+        startEdit(index, type) {
+            this.editingCell = { index, type };
+            this.$nextTick(() => {
+                const el = document.getElementById(`input-${type}-${index}`);
+                if (el) el.focus();
+            });
+        },
+        handleBlur() {
+            // 保存ボタンのクリックイベントが発火する猶予を持たせるため少し遅延させる
+            setTimeout(() => {
+                this.editingCell = null;
+            }, 150);
+        },
+        blurAndSave(type, index) {
+            this.saveAll();
+            const el = document.getElementById(`input-${type}-${index}`);
+            if (el) el.blur();
+        },
+        // 初期状態から変更されたかを判定（ボタンの表示条件）
+        isModified(index, type) {
+            if (this.savedUserInputs.length === 0) return false;
+            return this.userInputs[index][type] !== this.savedUserInputs[index][type];
+        },
+        // ローカルストレージに変更を保存し、ボタンを非表示にする
+        saveAll() {
             localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
+            this.savedUserInputs = JSON.parse(JSON.stringify(this.userInputs));
         },
         getRankColorClass(rank) {
             if (rank <= 5) return 'text-rank-low';
