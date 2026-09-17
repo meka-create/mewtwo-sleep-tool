@@ -16,8 +16,8 @@ createApp({
 
             let cumulativePower = 0;
             let results = [];
-            
-            // 画面上部に反映されている「現在地（最新のじぶん入力日）」を特定する
+
+            // 現在入力されている最も新しい日（現在地）を特定
             let latestActiveIndex = -1;
             for (let i = this.serverDailyData.length - 1; i >= 0; i--) {
                 const uIn = this.userInputs[i];
@@ -57,7 +57,7 @@ createApp({
                     hasJibunInput: (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)), 
                     eventPower: cumulativePower,
                     reachedRank: reachedRank,
-                    isLatestActive: i === latestActiveIndex // 強調表示用のフラグ
+                    isLatestActive: i === latestActiveIndex // 強調枠の判定に使用
                 });
             }
             return results;
@@ -121,7 +121,7 @@ createApp({
                              jibunPower: item.jibunPower,
                              minnaDirty: false,
                              jibunDirty: false,
-                             jibunLocked: item.jibunLocked || false // 過去にロックした情報を復元
+                             jibunLocked: item.jibunLocked || false // 過去にロックした状態を復元
                          }));
                     } else {
                          this.initializeUserInputs();
@@ -138,8 +138,8 @@ createApp({
         },
         startEdit(index, type) {
             // ロックされている場合は編集モードに移行しない
-            if (type === 'jibun' && this.userInputs[index].jibunLocked) return;
-            
+            if (type === 'jibun' && this.userInputs[index] && this.userInputs[index].jibunLocked) return;
+
             this.editingCell = { index, type };
             this.$nextTick(() => {
                 const el = document.getElementById(`input-${type}-${index}`);
@@ -149,7 +149,7 @@ createApp({
                 }
             });
         },
-        // ロック・アンロックを切り替えるメソッド
+        // 錠前アイコンをクリックした時の処理
         toggleLock(index) {
             if (this.userInputs[index]) {
                 this.userInputs[index].jibunLocked = !this.userInputs[index].jibunLocked;
@@ -163,6 +163,20 @@ createApp({
                 }
                 // 状態をローカルストレージへ即時保存
                 localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
+            }
+        },
+        // 倍率ボタンを押した時の計算処理
+        multiplyJibun(index, multiplier) {
+            if (this.userInputs[index] && this.userInputs[index].jibunLocked) return;
+            
+            const currentVal = this.userInputs[index].jibunPower;
+            if (currentVal !== null && currentVal !== '' && !isNaN(currentVal)) {
+                let newVal = Number(currentVal) * multiplier;
+                // JS特有の小数計算ノイズ（100.11000000000001 など）を除去しつつ小数を保持
+                newVal = parseFloat(newVal.toFixed(4)); 
+                this.userInputs[index].jibunPower = newVal;
+                // 値が変更されたので保存ボタンを表示させる
+                this.userInputs[index].jibunDirty = true;
             }
         },
         handleBlur() {
