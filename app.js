@@ -16,8 +16,8 @@ createApp({
 
             let cumulativePower = 0;
             let results = [];
-
-            // 現在入力されている最も新しい日（現在地）を特定
+            
+            // 画面上部に反映されている「現在地（最新のじぶん入力日）」を特定する
             let latestActiveIndex = -1;
             for (let i = this.serverDailyData.length - 1; i >= 0; i--) {
                 const uIn = this.userInputs[i];
@@ -32,11 +32,7 @@ createApp({
                 const userIn = this.userInputs[i] || { minnaPower: null, jibunPower: null };
                 
                 let mPower = (userIn.minnaPower !== null && userIn.minnaPower !== '' && !isNaN(userIn.minnaPower)) ? Number(userIn.minnaPower) : 0;
-                
-                // じぶんのパワーは、ベース値（入力値）に倍率（トグル）を乗算して計算する
-                let jPowerBase = (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)) ? Number(userIn.jibunPower) : 0;
-                let jMultiplier = userIn.jibunMultiplier || 1;
-                let jPower = jPowerBase * jMultiplier;
+                let jPower = (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)) ? Number(userIn.jibunPower) : 0;
 
                 let minna = serverDay.isFixed ? serverDay.fixedMinnaPower : mPower;
                 let jibun = jPower;
@@ -57,7 +53,7 @@ createApp({
                     day: serverDay.day,
                     isFixed: serverDay.isFixed,
                     minnaPower: minna,
-                    jibunPower: jPowerBase, // 画面表示等でベース値を参照できるよう維持
+                    jibunPower: jibun,
                     hasJibunInput: (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)), 
                     eventPower: cumulativePower,
                     reachedRank: reachedRank,
@@ -106,8 +102,7 @@ createApp({
                 jibunPower: null,
                 minnaDirty: false,
                 jibunDirty: false,
-                jibunLocked: false,
-                jibunMultiplier: 1 // 倍率の初期値（等倍）
+                jibunLocked: false // ロック状態の初期化
             }));
         },
         async loadData() {
@@ -126,8 +121,7 @@ createApp({
                              jibunPower: item.jibunPower,
                              minnaDirty: false,
                              jibunDirty: false,
-                             jibunLocked: item.jibunLocked || false,
-                             jibunMultiplier: item.jibunMultiplier || 1 // 過去の倍率状態を復元
+                             jibunLocked: item.jibunLocked || false // 過去にロックした情報を復元
                          }));
                     } else {
                          this.initializeUserInputs();
@@ -143,8 +137,9 @@ createApp({
             }
         },
         startEdit(index, type) {
-            if (type === 'jibun' && this.userInputs[index] && this.userInputs[index].jibunLocked) return;
-
+            // ロックされている場合は編集モードに移行しない
+            if (type === 'jibun' && this.userInputs[index].jibunLocked) return;
+            
             this.editingCell = { index, type };
             this.$nextTick(() => {
                 const el = document.getElementById(`input-${type}-${index}`);
@@ -159,28 +154,16 @@ createApp({
             if (this.userInputs[index]) {
                 this.userInputs[index].jibunLocked = !this.userInputs[index].jibunLocked;
                 
+                // ロックした瞬間に変更フラグや編集状態もクリアする
                 if (this.userInputs[index].jibunLocked) {
                     this.userInputs[index].jibunDirty = false;
                     if (this.editingCell && this.editingCell.index === index && this.editingCell.type === 'jibun') {
                         this.editingCell = null;
                     }
                 }
+                // 状態をローカルストレージへ即時保存
                 localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
             }
-        },
-        // トグル式：倍率ボタンを押した時の処理
-        toggleMultiplier(index, value) {
-            if (this.userInputs[index] && this.userInputs[index].jibunLocked) return;
-            
-            // 既に同じ倍率が適用されている場合は 1（等倍）に戻す
-            if (this.userInputs[index].jibunMultiplier === value) {
-                this.userInputs[index].jibunMultiplier = 1;
-            } else {
-                this.userInputs[index].jibunMultiplier = value;
-            }
-            
-            // 保存ボタンを表示させる
-            this.userInputs[index].jibunDirty = true;
         },
         handleBlur() {
             setTimeout(() => {

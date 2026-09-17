@@ -69,8 +69,9 @@
                 <span class="text-[9px] md:text-xs text-slate-400 font-normal">※表示は四捨五入（タップで編集）</span>
             </h2>
             
+            <!-- 最新入力カードの強調表示に対応する動的クラスを追加（「現在地」バッジは削除済み） -->
             <div v-for="(day, index) in calculatedDailyData" :key="index" 
-                 class="rounded-lg p-2 md:p-3 flex flex-row items-center gap-1.5 md:gap-3 transition-all duration-300 relative"
+                 class="rounded-lg p-2 md:p-3 flex flex-row items-center gap-2 md:gap-3 transition-all duration-300 relative"
                  :class="[
                      index === 7 ? 'mt-6' : 'mt-0',
                      day.isLatestActive 
@@ -78,16 +79,6 @@
                         : 'bg-slate-800 border border-slate-700 hover:bg-slate-700/50',
                      index === 7 && !day.isLatestActive ? 'border-t-2 border-t-purple-500' : ''
                  ]">
-
-                <!-- 鍵マーク（カード内右上：背景なしで余白をなくし、より上・右に寄せる） -->
-                <button @click="toggleLock(index)" class="absolute top-1 right-1 md:top-1.5 md:right-1.5 focus:outline-none hover:scale-110 transition-transform z-20" title="ロック/解除">
-                    <svg v-if="userInputs[index] && userInputs[index].jibunLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5 md:w-4 md:h-4 text-purple-400">
-                        <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
-                    </svg>
-                    <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-500 hover:text-slate-300">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21h16.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
-                    </svg>
-                </button>
 
                 <!-- 左側：日付とランク -->
                 <div class="flex-shrink-0 w-14 md:w-20 text-center">
@@ -98,53 +89,48 @@
                     </div>
                 </div>
 
-                <!-- 中央：入力欄群（1fr_1fr_auto で左右フォームの幅を完全均等化） -->
-                <div class="flex-grow grid grid-cols-[1fr_1fr_auto] gap-x-1.5 md:gap-x-2">
-                    
+                <!-- 中央：入力欄 -->
+                <div class="flex-grow grid grid-cols-2 gap-1.5 md:gap-2">
                     <!-- みんなのねむけパワー -->
-                    <div class="flex flex-col min-w-0">
-                        <div class="relative h-[34px] md:h-[40px] w-full">
-                            <div v-if="day.isFixed" class="w-full h-full bg-slate-900/50 border border-slate-700 rounded px-1.5 flex justify-between items-center text-slate-400">
-                                <span class="text-xs md:text-sm">{{ Math.round(day.minnaPower).toLocaleString() }}</span>
-                                <span class="text-[7px] md:text-[10px] bg-slate-700 px-1 py-0.5 rounded">確定</span>
-                            </div>
-                            <div v-else class="w-full h-full">
-                                <template v-if="editingCell && editingCell.index === index && editingCell.type === 'minna'">
-                                    <input :id="'input-minna-' + index" type="number" step="0.1" 
-                                           v-model.number="userInputs[index].minnaPower" 
-                                           @input="userInputs[index].minnaDirty = true"
-                                           @blur="handleBlur" 
-                                           @keyup.enter="blurAndSave(index, 'minna')"
-                                           class="w-full h-full bg-slate-900 border border-purple-500 rounded px-1.5 md:px-2 text-white text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-purple-500">
-                                </template>
-                                <template v-else>
-                                    <div @click="startEdit(index, 'minna')" 
-                                         class="w-full h-full bg-slate-900 border border-slate-600 rounded px-1.5 md:px-2 text-white text-xs md:text-sm cursor-text flex items-center transition-colors hover:bg-slate-800"
-                                         :class="{'border-purple-500 bg-purple-900/30': userInputs[index] && userInputs[index].minnaDirty}">
-                                        <span v-if="userInputs[index].minnaPower !== null && userInputs[index].minnaPower !== '' && !isNaN(userInputs[index].minnaPower)">
-                                            {{ Math.round(userInputs[index].minnaPower).toLocaleString() }}
-                                        </span>
-                                        <span v-else class="text-slate-500 text-[9px] md:text-xs">未入力</span>
-                                    </div>
-                                </template>
-                                <button v-show="userInputs[index] && userInputs[index].minnaDirty" @mousedown.prevent="saveOne(index, 'minna')"
-                                        class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
-                                    保存
-                                </button>
-                            </div>
+                    <div class="relative">
+                        <div v-if="day.isFixed" class="h-[34px] md:h-[40px] bg-slate-900/50 border border-slate-700 rounded px-1.5 flex justify-between items-center text-slate-400">
+                            <span class="text-xs md:text-sm">{{ Math.round(day.minnaPower).toLocaleString() }}</span>
+                            <span class="text-[7px] md:text-[10px] bg-slate-700 px-1 py-0.5 rounded">確定</span>
                         </div>
-                        <div class="flex items-center justify-center mt-1.5 h-[16px]">
-                            <span class="text-[8px] md:text-[11px] text-slate-400 leading-tight tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis">みんなのねむけパワー</span>
+                        <div v-else class="h-[34px] md:h-[40px]">
+                            <template v-if="editingCell && editingCell.index === index && editingCell.type === 'minna'">
+                                <input :id="'input-minna-' + index" type="number" step="0.1" 
+                                       v-model.number="userInputs[index].minnaPower" 
+                                       @input="userInputs[index].minnaDirty = true"
+                                       @blur="handleBlur" 
+                                       @keyup.enter="blurAndSave(index, 'minna')"
+                                       class="w-full h-full bg-slate-900 border border-purple-500 rounded px-1.5 md:px-2 text-white text-xs md:text-sm focus:outline-none focus:ring-1 focus:ring-purple-500">
+                            </template>
+                            <template v-else>
+                                <div @click="startEdit(index, 'minna')" 
+                                     class="w-full h-full bg-slate-900 border border-slate-600 rounded px-1.5 md:px-2 text-white text-xs md:text-sm cursor-text flex items-center transition-colors hover:bg-slate-800"
+                                     :class="{'border-purple-500 bg-purple-900/30': userInputs[index] && userInputs[index].minnaDirty}">
+                                    <span v-if="userInputs[index].minnaPower !== null && userInputs[index].minnaPower !== '' && !isNaN(userInputs[index].minnaPower)">
+                                        {{ Math.round(userInputs[index].minnaPower).toLocaleString() }}
+                                    </span>
+                                    <span v-else class="text-slate-500 text-[9px] md:text-xs">未入力</span>
+                                </div>
+                            </template>
+                            <button v-show="userInputs[index] && userInputs[index].minnaDirty" @mousedown.prevent="saveOne(index, 'minna')"
+                                    class="absolute right-0.5 md:right-1 top-1/2 -translate-y-1/2 bg-purple-500 hover:bg-purple-400 text-white text-[9px] md:text-xs px-1.5 md:px-2 py-1 rounded shadow-md z-10 transition-all font-bold">
+                                保存
+                            </button>
                         </div>
+                        <div class="text-[8px] md:text-[11px] text-slate-400 text-center mt-1 leading-tight tracking-tighter">みんなのねむけパワー</div>
                     </div>
                     
                     <!-- じぶんのねむけパワー -->
-                    <div class="flex flex-col min-w-0">
-                        <!-- ロック状態の場合（グレーアウト・倍率適用後の数値を表示） -->
-                        <div v-if="userInputs[index] && userInputs[index].jibunLocked" class="relative h-[34px] md:h-[40px] w-full bg-slate-900/40 border border-slate-700/60 rounded px-1.5 flex justify-between items-center text-slate-500">
+                    <div class="relative">
+                        <!-- ロック状態の場合（グレーアウト・入力不可） -->
+                        <div v-if="userInputs[index] && userInputs[index].jibunLocked" class="h-[34px] md:h-[40px] bg-slate-900/40 border border-slate-700/60 rounded px-1.5 flex justify-between items-center text-slate-500">
                             <span class="text-xs md:text-sm">
                                 <template v-if="userInputs[index].jibunPower !== null && userInputs[index].jibunPower !== '' && !isNaN(userInputs[index].jibunPower)">
-                                    {{ Math.round(userInputs[index].jibunPower * (userInputs[index].jibunMultiplier || 1)).toLocaleString() }}
+                                    {{ Math.round(userInputs[index].jibunPower).toLocaleString() }}
                                 </template>
                                 <template v-else>未入力</template>
                             </span>
@@ -156,7 +142,7 @@
                             </span>
                         </div>
                         <!-- 未ロック状態の場合（入力可能） -->
-                        <div v-else class="relative h-[34px] md:h-[40px] w-full">
+                        <div v-else class="h-[34px] md:h-[40px]">
                             <template v-if="editingCell && editingCell.index === index && editingCell.type === 'jibun'">
                                 <input :id="'input-jibun-' + index" type="number" step="0.1" 
                                        v-model.number="userInputs[index].jibunPower" 
@@ -170,7 +156,7 @@
                                      class="w-full h-full bg-slate-900 border border-slate-600 rounded px-1.5 md:px-2 text-white text-xs md:text-sm cursor-text flex items-center transition-colors hover:bg-slate-800"
                                      :class="{'border-purple-500 bg-purple-900/30': userInputs[index] && userInputs[index].jibunDirty}">
                                     <span v-if="userInputs[index].jibunPower !== null && userInputs[index].jibunPower !== '' && !isNaN(userInputs[index].jibunPower)">
-                                        {{ Math.round(userInputs[index].jibunPower * (userInputs[index].jibunMultiplier || 1)).toLocaleString() }}
+                                        {{ Math.round(userInputs[index].jibunPower).toLocaleString() }}
                                     </span>
                                     <span v-else class="text-slate-500 text-[9px] md:text-xs">未入力</span>
                                 </div>
@@ -181,42 +167,27 @@
                             </button>
                         </div>
                         
-                        <!-- じぶんのねむけパワー テキスト（中央配置） -->
-                        <div class="flex items-center justify-center mt-1.5 h-[16px]">
-                            <span class="text-[8px] md:text-[11px] text-slate-400 leading-tight tracking-tighter whitespace-nowrap overflow-hidden text-ellipsis">じぶんのねむけパワー</span>
+                        <!-- ラベル 兼 ロックボタン -->
+                        <div class="flex items-center justify-center gap-1 mt-1">
+                            <span class="text-[8px] md:text-[11px] text-slate-400 leading-tight tracking-tighter">じぶんのねむけパワー</span>
+                            <button @click="toggleLock(index)" class="focus:outline-none hover:scale-110 transition-transform" title="ロック/解除">
+                                <!-- ロック中アイコン -->
+                                <svg v-if="userInputs[index] && userInputs[index].jibunLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-purple-400">
+                                    <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                                </svg>
+                                <!-- アンロック（開錠）アイコン -->
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-500 hover:text-slate-300">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21h16.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                            </button>
                         </div>
-                    </div>
-
-                    <!-- じぶん側のコントロールエリア（倍率ボタン：右上揃え） -->
-                    <div class="flex flex-col justify-start items-center w-6 md:w-8 gap-1 pt-0">
-                        <template v-if="!(userInputs[index] && userInputs[index].jibunLocked)">
-                            <button v-if="index >= 0 && index <= 11" @mousedown.prevent="toggleMultiplier(index, 1.1)" 
-                                    class="w-full text-[7px] md:text-[9px] py-[3px] md:py-1 rounded shadow-sm transition-colors leading-none border"
-                                    :class="(userInputs[index] && userInputs[index].jibunMultiplier === 1.1) ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600'">
-                                x1.1
-                            </button>
-                            <button v-if="index >= 7 && index <= 11" @mousedown.prevent="toggleMultiplier(index, 1.3)" 
-                                    class="w-full text-[7px] md:text-[9px] py-[3px] md:py-1 rounded shadow-sm transition-colors leading-none border"
-                                    :class="(userInputs[index] && userInputs[index].jibunMultiplier === 1.3) ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600'">
-                                x1.3
-                            </button>
-                            <button v-if="index === 12" @mousedown.prevent="toggleMultiplier(index, 1.5)" 
-                                    class="w-full text-[7px] md:text-[9px] py-[3px] md:py-1 rounded shadow-sm transition-colors leading-none border"
-                                    :class="(userInputs[index] && userInputs[index].jibunMultiplier === 1.5) ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600'">
-                                x1.5
-                            </button>
-                            <button v-if="index === 13" @mousedown.prevent="toggleMultiplier(index, 2.0)" 
-                                    class="w-full text-[7px] md:text-[9px] py-[3px] md:py-1 rounded shadow-sm transition-colors leading-none border"
-                                    :class="(userInputs[index] && userInputs[index].jibunMultiplier === 2.0) ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-700 hover:bg-slate-600 text-slate-300 border-slate-600'">
-                                x2.0
-                            </button>
-                        </template>
                     </div>
                 </div>
 
-                <!-- 右側：累計パワー（単位M付与。「累計」テキストを削除して被りを回避） -->
-                <div class="flex-shrink-0 w-[4.5rem] md:w-20 text-right pr-1 md:pr-0">
-                    <div class="text-sm md:text-lg font-bold text-purple-300 break-words leading-tight mt-1">{{ Math.max(0, Math.round(day.eventPower)).toLocaleString() }} M</div>
+                <!-- 右側：合計パワー -->
+                <div class="flex-shrink-0 w-16 md:w-20 text-right">
+                    <div class="text-sm md:text-lg font-bold text-purple-300 break-words leading-tight">{{ Math.max(0, Math.round(day.eventPower)).toLocaleString() }} M</div>
+                    <div class="text-[8px] md:text-[11px] text-slate-400 mt-1 leading-tight tracking-tighter text-center">累計</div>
                 </div>
             </div>
         </div>
@@ -254,7 +225,7 @@
             </div>
         </details>
     </div>
-    <!-- キャッシュ対策：v=11 -->
-    <script src="app.js?v=11"></script>
+    <!-- キャッシュ対策：v=5 -->
+    <script src="app.js?v=5"></script>
 </body>
 </html>
