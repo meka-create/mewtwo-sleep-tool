@@ -32,7 +32,11 @@ createApp({
                 const userIn = this.userInputs[i] || { minnaPower: null, jibunPower: null };
                 
                 let mPower = (userIn.minnaPower !== null && userIn.minnaPower !== '' && !isNaN(userIn.minnaPower)) ? Number(userIn.minnaPower) : 0;
-                let jPower = (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)) ? Number(userIn.jibunPower) : 0;
+                
+                // じぶんのパワーは、ベース値（入力値）に倍率（トグル）を乗算して計算する
+                let jPowerBase = (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)) ? Number(userIn.jibunPower) : 0;
+                let jMultiplier = userIn.jibunMultiplier || 1;
+                let jPower = jPowerBase * jMultiplier;
 
                 let minna = serverDay.isFixed ? serverDay.fixedMinnaPower : mPower;
                 let jibun = jPower;
@@ -53,11 +57,11 @@ createApp({
                     day: serverDay.day,
                     isFixed: serverDay.isFixed,
                     minnaPower: minna,
-                    jibunPower: jibun,
+                    jibunPower: jPowerBase, // 画面表示等でベース値を参照できるよう維持
                     hasJibunInput: (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)), 
                     eventPower: cumulativePower,
                     reachedRank: reachedRank,
-                    isLatestActive: i === latestActiveIndex // 強調枠の判定に使用
+                    isLatestActive: i === latestActiveIndex // 強調表示用のフラグ
                 });
             }
             return results;
@@ -102,7 +106,8 @@ createApp({
                 jibunPower: null,
                 minnaDirty: false,
                 jibunDirty: false,
-                jibunLocked: false // ロック状態の初期化
+                jibunLocked: false,
+                jibunMultiplier: 1 // 倍率の初期値（等倍）
             }));
         },
         async loadData() {
@@ -121,7 +126,8 @@ createApp({
                              jibunPower: item.jibunPower,
                              minnaDirty: false,
                              jibunDirty: false,
-                             jibunLocked: item.jibunLocked || false // 過去にロックした状態を復元
+                             jibunLocked: item.jibunLocked || false,
+                             jibunMultiplier: item.jibunMultiplier || 1 // 過去の倍率状態を復元
                          }));
                     } else {
                          this.initializeUserInputs();
@@ -137,7 +143,6 @@ createApp({
             }
         },
         startEdit(index, type) {
-            // ロックされている場合は編集モードに移行しない
             if (type === 'jibun' && this.userInputs[index] && this.userInputs[index].jibunLocked) return;
 
             this.editingCell = { index, type };
@@ -149,35 +154,33 @@ createApp({
                 }
             });
         },
-        // 錠前アイコンをクリックした時の処理
+        // ロック・アンロックを切り替えるメソッド
         toggleLock(index) {
             if (this.userInputs[index]) {
                 this.userInputs[index].jibunLocked = !this.userInputs[index].jibunLocked;
                 
-                // ロックした瞬間に変更フラグや編集状態もクリアする
                 if (this.userInputs[index].jibunLocked) {
                     this.userInputs[index].jibunDirty = false;
                     if (this.editingCell && this.editingCell.index === index && this.editingCell.type === 'jibun') {
                         this.editingCell = null;
                     }
                 }
-                // 状態をローカルストレージへ即時保存
                 localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
             }
         },
-        // 倍率ボタンを押した時の計算処理
-        multiplyJibun(index, multiplier) {
+        // トグル式：倍率ボタンを押した時の処理
+        toggleMultiplier(index, value) {
             if (this.userInputs[index] && this.userInputs[index].jibunLocked) return;
             
-            const currentVal = this.userInputs[index].jibunPower;
-            if (currentVal !== null && currentVal !== '' && !isNaN(currentVal)) {
-                let newVal = Number(currentVal) * multiplier;
-                // JS特有の小数計算ノイズ（100.11000000000001 など）を除去しつつ小数を保持
-                newVal = parseFloat(newVal.toFixed(4)); 
-                this.userInputs[index].jibunPower = newVal;
-                // 値が変更されたので保存ボタンを表示させる
-                this.userInputs[index].jibunDirty = true;
+            // 既に同じ倍率が適用されている場合は 1（等倍）に戻す
+            if (this.userInputs[index].jibunMultiplier === value) {
+                this.userInputs[index].jibunMultiplier = 1;
+            } else {
+                this.userInputs[index].jibunMultiplier = value;
             }
+            
+            // 保存ボタンを表示させる
+            this.userInputs[index].jibunDirty = true;
         },
         handleBlur() {
             setTimeout(() => {
