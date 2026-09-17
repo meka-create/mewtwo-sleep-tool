@@ -16,6 +16,16 @@ createApp({
 
             let cumulativePower = 0;
             let results = [];
+            
+            // 画面上部に反映されている「現在地（最新のじぶん入力日）」を特定する
+            let latestActiveIndex = -1;
+            for (let i = this.serverDailyData.length - 1; i >= 0; i--) {
+                const uIn = this.userInputs[i];
+                if (uIn && uIn.jibunPower !== null && uIn.jibunPower !== '' && !isNaN(uIn.jibunPower)) {
+                    latestActiveIndex = i;
+                    break;
+                }
+            }
 
             for (let i = 0; i < this.serverDailyData.length; i++) {
                 const serverDay = this.serverDailyData[i];
@@ -46,7 +56,8 @@ createApp({
                     jibunPower: jibun,
                     hasJibunInput: (userIn.jibunPower !== null && userIn.jibunPower !== '' && !isNaN(userIn.jibunPower)), 
                     eventPower: cumulativePower,
-                    reachedRank: reachedRank
+                    reachedRank: reachedRank,
+                    isLatestActive: i === latestActiveIndex // 強調表示用のフラグ
                 });
             }
             return results;
@@ -90,7 +101,8 @@ createApp({
                 minnaPower: day.isFixed ? null : day.fixedMinnaPower,
                 jibunPower: null,
                 minnaDirty: false,
-                jibunDirty: false
+                jibunDirty: false,
+                jibunLocked: false // ロック状態の初期化
             }));
         },
         async loadData() {
@@ -104,12 +116,12 @@ createApp({
                 if (saved) {
                     const parsedSaved = JSON.parse(saved);
                     if(parsedSaved.length === this.serverDailyData.length){
-                         // ロード時はダーティフラグを明示的に false にして復元
                          this.userInputs = parsedSaved.map(item => ({
                              minnaPower: item.minnaPower,
                              jibunPower: item.jibunPower,
                              minnaDirty: false,
-                             jibunDirty: false
+                             jibunDirty: false,
+                             jibunLocked: item.jibunLocked || false // 過去にロックした情報を復元
                          }));
                     } else {
                          this.initializeUserInputs();
@@ -125,6 +137,9 @@ createApp({
             }
         },
         startEdit(index, type) {
+            // ロックされている場合は編集モードに移行しない
+            if (type === 'jibun' && this.userInputs[index].jibunLocked) return;
+            
             this.editingCell = { index, type };
             this.$nextTick(() => {
                 const el = document.getElementById(`input-${type}-${index}`);
@@ -133,6 +148,22 @@ createApp({
                     el.select();
                 }
             });
+        },
+        // ロック・アンロックを切り替えるメソッド
+        toggleLock(index) {
+            if (this.userInputs[index]) {
+                this.userInputs[index].jibunLocked = !this.userInputs[index].jibunLocked;
+                
+                // ロックした瞬間に変更フラグや編集状態もクリアする
+                if (this.userInputs[index].jibunLocked) {
+                    this.userInputs[index].jibunDirty = false;
+                    if (this.editingCell && this.editingCell.index === index && this.editingCell.type === 'jibun') {
+                        this.editingCell = null;
+                    }
+                }
+                // 状態をローカルストレージへ即時保存
+                localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
+            }
         },
         handleBlur() {
             setTimeout(() => {
@@ -143,7 +174,6 @@ createApp({
             this.saveOne(index, type);
             this.editingCell = null;
         },
-        // 個別の項目を保存し、その項目の変更フラグだけを折る
         saveOne(index, type) {
             if (type === 'minna') {
                 this.userInputs[index].minnaDirty = false;

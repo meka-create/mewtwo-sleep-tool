@@ -69,10 +69,22 @@
                 <span class="text-[9px] md:text-xs text-slate-400 font-normal">※表示は四捨五入（タップで編集）</span>
             </h2>
             
+            <!-- 最新入力カードの強調表示に対応する動的クラスを追加 -->
             <div v-for="(day, index) in calculatedDailyData" :key="index" 
-                 class="bg-slate-800 rounded-lg p-2 md:p-3 border border-slate-700 flex flex-row items-center gap-2 md:gap-3 transition-colors hover:bg-slate-750"
-                 :class="{ 'mt-6 border-t-2 border-t-purple-500': index === 7 }">
+                 class="rounded-lg p-2 md:p-3 flex flex-row items-center gap-2 md:gap-3 transition-all duration-300 relative"
+                 :class="[
+                     index === 7 ? 'mt-6' : 'mt-0',
+                     day.isLatestActive 
+                        ? 'bg-slate-800 border border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.3)] z-10' 
+                        : 'bg-slate-800 border border-slate-700 hover:bg-slate-700/50',
+                     index === 7 && !day.isLatestActive ? 'border-t-2 border-t-purple-500' : ''
+                 ]">
                 
+                <!-- 注目バッジ（最新入力カードのみ表示） -->
+                <div v-if="day.isLatestActive" class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-purple-500 text-white text-[8px] md:text-[10px] font-bold px-2 py-0.5 rounded-full shadow-md">
+                    現在地
+                </div>
+
                 <!-- 左側：日付とランク -->
                 <div class="flex-shrink-0 w-14 md:w-20 text-center">
                     <div class="text-[9px] md:text-xs text-slate-400 leading-tight">{{ day.date }}</div>
@@ -119,7 +131,23 @@
                     
                     <!-- じぶんのねむけパワー -->
                     <div class="relative">
-                        <div class="h-[34px] md:h-[40px]">
+                        <!-- ロック状態の場合（グレーアウト・入力不可） -->
+                        <div v-if="userInputs[index] && userInputs[index].jibunLocked" class="h-[34px] md:h-[40px] bg-slate-900/40 border border-slate-700/60 rounded px-1.5 flex justify-between items-center text-slate-500">
+                            <span class="text-xs md:text-sm">
+                                <template v-if="userInputs[index].jibunPower !== null && userInputs[index].jibunPower !== '' && !isNaN(userInputs[index].jibunPower)">
+                                    {{ Math.round(userInputs[index].jibunPower).toLocaleString() }}
+                                </template>
+                                <template v-else>未入力</template>
+                            </span>
+                            <span class="text-[7px] md:text-[10px] bg-slate-800/80 px-1 py-0.5 rounded flex items-center gap-0.5 text-slate-400">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-2.5 h-2.5">
+                                    <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                                </svg>
+                                確定
+                            </span>
+                        </div>
+                        <!-- 未ロック状態の場合（入力可能） -->
+                        <div v-else class="h-[34px] md:h-[40px]">
                             <template v-if="editingCell && editingCell.index === index && editingCell.type === 'jibun'">
                                 <input :id="'input-jibun-' + index" type="number" step="0.1" 
                                        v-model.number="userInputs[index].jibunPower" 
@@ -143,14 +171,28 @@
                                 保存
                             </button>
                         </div>
-                        <div class="text-[8px] md:text-[11px] text-slate-400 text-center mt-1 leading-tight tracking-tighter">じぶんのねむけパワー</div>
+                        
+                        <!-- ラベル 兼 ロックボタン -->
+                        <div class="flex items-center justify-center gap-1 mt-1">
+                            <span class="text-[8px] md:text-[11px] text-slate-400 leading-tight tracking-tighter">じぶんのねむけパワー</span>
+                            <button @click="toggleLock(index)" class="focus:outline-none hover:scale-110 transition-transform" title="ロック/解除">
+                                <!-- ロック中アイコン -->
+                                <svg v-if="userInputs[index] && userInputs[index].jibunLocked" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-purple-400">
+                                    <path fill-rule="evenodd" d="M10 1a4.5 4.5 0 00-4.5 4.5V9H5a2 2 0 00-2 2v6a2 2 0 002 2h10a2 2 0 002-2v-6a2 2 0 00-2-2h-.5V5.5A4.5 4.5 0 0010 1zm3 8V5.5a3 3 0 10-6 0V9h6z" clip-rule="evenodd" />
+                                </svg>
+                                <!-- アンロック（開錠）アイコン -->
+                                <svg v-else xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-500 hover:text-slate-300">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21h16.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <!-- 右側：合計パワー -->
-                <div class="flex-shrink-0 w-16 md:w-20 text-right">
-                    <div class="text-sm md:text-lg font-bold text-purple-300 break-words leading-tight">{{ Math.max(0, Math.round(day.eventPower)).toLocaleString() }}</div>
-                    <div class="text-[8px] md:text-[11px] text-slate-400 mt-1 leading-tight tracking-tighter text-center">合計</div>
+                <!-- 右側：合計パワー（単位M付与、累計へ表記変更） -->
+                <div class="flex-shrink-0 w-20 md:w-24 text-right">
+                    <div class="text-sm md:text-lg font-bold text-purple-300 break-words leading-tight">{{ Math.max(0, Math.round(day.eventPower)).toLocaleString() }} M</div>
+                    <div class="text-[8px] md:text-[11px] text-slate-400 mt-1 leading-tight tracking-tighter text-center">累計</div>
                 </div>
             </div>
         </div>
@@ -188,7 +230,7 @@
             </div>
         </details>
     </div>
-    <!-- キャッシュ対策：v=4 -->
-    <script src="app.js?v=4"></script>
+    <!-- キャッシュ対策：v=5 -->
+    <script src="app.js?v=5"></script>
 </body>
 </html>
