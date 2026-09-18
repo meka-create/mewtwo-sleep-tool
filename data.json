@@ -1,6 +1,6 @@
 {
   "masterRanks": [
-    { "rank": 1, "requiredPower": 1, "isFixed": true },
+    { "rank": 1, "requiredPower": 0, "isFixed": true },
     { "rank": 2, "requiredPower": 80, "isFixed": true },
     { "rank": 3, "requiredPower": 200, "isFixed": true },
     { "rank": 4, "requiredPower": 450, "isFixed": true },
