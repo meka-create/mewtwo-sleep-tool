@@ -102,7 +102,8 @@ createApp({
                 jibunPower: null,
                 minnaDirty: false,
                 jibunDirty: false,
-                jibunLocked: false // ロック状態の初期化
+                jibunLocked: false,
+                lastServerMinnaPower: day.fixedMinnaPower // サーバーの値を記憶
             }));
         },
         async loadData() {
@@ -116,13 +117,30 @@ createApp({
                 if (saved) {
                     const parsedSaved = JSON.parse(saved);
                     if(parsedSaved.length === this.serverDailyData.length){
-                         this.userInputs = parsedSaved.map(item => ({
-                             minnaPower: item.minnaPower,
-                             jibunPower: item.jibunPower,
-                             minnaDirty: false,
-                             jibunDirty: false,
-                             jibunLocked: item.jibunLocked || false // 過去にロックした情報を復元
-                         }));
+                         this.userInputs = parsedSaved.map((item, index) => {
+                             const serverDay = this.serverDailyData[index];
+                             
+                             let currentMinnaPower = item.minnaPower;
+                             let newLastServerMinnaPower = item.lastServerMinnaPower;
+                             
+                             // ▼【重要】data.jsonが更新されたか判定し、更新されていれば既存データを上書きする
+                             if (item.lastServerMinnaPower !== serverDay.fixedMinnaPower) {
+                                 currentMinnaPower = serverDay.isFixed ? null : serverDay.fixedMinnaPower;
+                                 newLastServerMinnaPower = serverDay.fixedMinnaPower;
+                             }
+
+                             return {
+                                 minnaPower: currentMinnaPower,
+                                 jibunPower: item.jibunPower,
+                                 minnaDirty: false,
+                                 jibunDirty: false,
+                                 jibunLocked: item.jibunLocked || false,
+                                 lastServerMinnaPower: newLastServerMinnaPower // 更新判定用の記録を維持
+                             };
+                         });
+                         
+                         // データの追従（上書き）があった場合に備えて、即座にストレージに最新状態を保存
+                         localStorage.setItem('mewtwo_sleep_calc_data', JSON.stringify(this.userInputs));
                     } else {
                          this.initializeUserInputs();
                     }
