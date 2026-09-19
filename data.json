@@ -23,13 +23,13 @@
     { "date": "9/17", "day": "木", "fixedMinnaPower": 271.614673, "isFixed": true },
     { "date": "9/18", "day": "金", "fixedMinnaPower": 343.757158, "isFixed": true },
     { "date": "9/19", "day": "土", "fixedMinnaPower": 441.210170, "isFixed": true },
-    { "date": "9/20", "day": "日", "fixedMinnaPower": 557, "isFixed": false },
-    { "date": "9/21", "day": "月", "fixedMinnaPower": 703, "isFixed": false },
-    { "date": "9/22", "day": "火", "fixedMinnaPower": 874, "isFixed": false },
-    { "date": "9/23", "day": "水", "fixedMinnaPower": 920, "isFixed": false },
-    { "date": "9/24", "day": "木", "fixedMinnaPower": 990, "isFixed": false },
-    { "date": "9/25", "day": "金", "fixedMinnaPower": 1097, "isFixed": false },
-    { "date": "9/26", "day": "土", "fixedMinnaPower": 1225, "isFixed": false },
-    { "date": "9/27", "day": "日", "fixedMinnaPower": 1353, "isFixed": false }
+    { "date": "9/20", "day": "日", "fixedMinnaPower": 562, "isFixed": false },
+    { "date": "9/21", "day": "月", "fixedMinnaPower": 708, "isFixed": false },
+    { "date": "9/22", "day": "火", "fixedMinnaPower": 879, "isFixed": false },
+    { "date": "9/23", "day": "水", "fixedMinnaPower": 925, "isFixed": false },
+    { "date": "9/24", "day": "木", "fixedMinnaPower": 995, "isFixed": false },
+    { "date": "9/25", "day": "金", "fixedMinnaPower": 1102, "isFixed": false },
+    { "date": "9/26", "day": "土", "fixedMinnaPower": 1230, "isFixed": false },
+    { "date": "9/27", "day": "日", "fixedMinnaPower": 1358, "isFixed": false }
   ]
 }
