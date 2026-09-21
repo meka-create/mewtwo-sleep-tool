@@ -9,12 +9,12 @@
     { "rank": 7, "requiredPower": 1900, "isFixed": true },
     { "rank": 8, "requiredPower": 2500, "isFixed": true },
     { "rank": 9, "requiredPower": 3200, "isFixed": true },
-    { "rank": 10, "requiredPower": 3900, "isFixed": false },
-    { "rank": 11, "requiredPower": 4700, "isFixed": false },
-    { "rank": 12, "requiredPower": 5500, "isFixed": false },
-    { "rank": 13, "requiredPower": 6400, "isFixed": false },
-    { "rank": 14, "requiredPower": 8300, "isFixed": false },
-    { "rank": 15, "requiredPower": 10600, "isFixed": false }
+    { "rank": 10, "requiredPower": 3900, "isFixed": true },
+    { "rank": 11, "requiredPower": 4700, "isFixed": true },
+    { "rank": 12, "requiredPower": 5500, "isFixed": true },
+    { "rank": 13, "requiredPower": 6400, "isFixed": true },
+    { "rank": 14, "requiredPower": 9000, "isFixed": true },
+    { "rank": 15, "requiredPower": 12000, "isFixed": true }
   ],
   "dailyData": [
     { "date": "9/14", "day": "月", "fixedMinnaPower": 94.426354, "isFixed": true },
@@ -24,12 +24,12 @@
     { "date": "9/18", "day": "金", "fixedMinnaPower": 343.757158, "isFixed": true },
     { "date": "9/19", "day": "土", "fixedMinnaPower": 441.210170, "isFixed": true },
     { "date": "9/20", "day": "日", "fixedMinnaPower": 568.618683, "isFixed": true },
-    { "date": "9/21", "day": "月", "fixedMinnaPower": 715, "isFixed": false },
-    { "date": "9/22", "day": "火", "fixedMinnaPower": 886, "isFixed": false },
-    { "date": "9/23", "day": "水", "fixedMinnaPower": 932, "isFixed": false },
-    { "date": "9/24", "day": "木", "fixedMinnaPower": 1002, "isFixed": false },
-    { "date": "9/25", "day": "金", "fixedMinnaPower": 1109, "isFixed": false },
-    { "date": "9/26", "day": "土", "fixedMinnaPower": 1237, "isFixed": false },
-    { "date": "9/27", "day": "日", "fixedMinnaPower": 1365, "isFixed": false }
+    { "date": "9/21", "day": "月", "fixedMinnaPower": 723.079206, "isFixed": true },
+    { "date": "9/22", "day": "火", "fixedMinnaPower": 894, "isFixed": false },
+    { "date": "9/23", "day": "水", "fixedMinnaPower": 940, "isFixed": false },
+    { "date": "9/24", "day": "木", "fixedMinnaPower": 1010, "isFixed": false },
+    { "date": "9/25", "day": "金", "fixedMinnaPower": 1117, "isFixed": false },
+    { "date": "9/26", "day": "土", "fixedMinnaPower": 1245, "isFixed": false },
+    { "date": "9/27", "day": "日", "fixedMinnaPower": 1373, "isFixed": false }
   ]
 }
